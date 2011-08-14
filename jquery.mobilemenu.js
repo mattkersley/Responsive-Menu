@@ -16,13 +16,13 @@
     
     //function to check if selector matches a list
     function isList($this){
-      return (($this.is('ul, ol')) ?  true : false);
+      return $this.is('ul, ol');
     }
   
   
     //function to decide if mobile or not
     function isMobile(){
-      return (($(window).width() < settings.switchWidth) ? true : false);
+      return ($(window).width() < settings.switchWidth);
     }
     
     
@@ -31,14 +31,14 @@
       
       //if the list has an ID, use it to give the menu an ID
       if($this.attr('id')){
-        return (($('#mobileMenu_'+$this.attr('id')).length > 0) ? true : false);
+        return ($('#mobileMenu_'+$this.attr('id')).length > 0);
       } 
       
       //otherwise, give the list and select elements a generated ID
       else {
         menuCount++;
         $this.attr('id', 'mm'+menuCount);
-        return (($('#mobileMenu_mm'+menuCount).length > 0) ? true : false);
+        return ($('#mobileMenu_mm'+menuCount).length > 0);
       }
     }
     
