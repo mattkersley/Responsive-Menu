@@ -51,14 +51,14 @@
     
     //show the mobile menu
     function showMenu($this){
-      $this.hide();
+      $this.hide('display', 'none');
       $('#mobileMenu_'+$this.attr('id')).show();
     }
     
     
     //hide the mobile menu
     function hideMenu($this){
-      $this.show();
+      $this.css('display', '');
       $('#mobileMenu_'+$this.attr('id')).hide();
     }
     
