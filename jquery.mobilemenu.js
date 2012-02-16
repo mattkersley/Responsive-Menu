@@ -121,8 +121,6 @@
 		//de-duplicate any repeated items
 		checkForDuplicates($menu);
 		
-		console.log($menu);
-		
 		//return new combined list
 		return $menu;
 		
