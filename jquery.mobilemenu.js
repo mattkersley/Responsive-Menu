@@ -1,150 +1,262 @@
 (function($){
+	
+	//plugin's default options
+	var settings = {
+		combine: true,					//combine multiple menus into a single select
+		groupPageText: 'Main',			//optgroup's aren't selectable, make an option for it
+		nested: true,					//create optgroups by default
+		prependTo: 'body',				//insert at top of page by default
+		switchWidth: 480,				//width at which to switch to select, and back again
+		topOptionText: 'Select a page'	//default "unselected" state
+	},
+	
+	//used to store original matched menus
+	$menus,
+	
+	//used as a unique index for each menu if no ID exists
+	menuCount = 0,
+	
+	//used to store unique list items for combining lists
+	uniqueLinks = [];
 
-  //variable for storing the menu count when no ID is present
-  var menuCount = 0;
-  
-  //plugin code
-  $.fn.mobileMenu = function(options){
-    
-    //plugin's default options
-    var settings = {
-      switchWidth: 768,
-      topOptionText: 'Select a page',
-      indentString: '&nbsp;&nbsp;&nbsp;'
-    };
-    
-    
-    //function to check if selector matches a list
-    function isList($this){
-      return $this.is('ul, ol');
-    }
-  
-  
-    //function to decide if mobile or not
-    function isMobile(){
-      return ($(window).width() < settings.switchWidth);
-    }
-    
-    
-    //check if dropdown exists for the current element
-    function menuExists($this){
-      
-      //if the list has an ID, use it to give the menu an ID
-      if($this.attr('id')){
-        return ($('#mobileMenu_'+$this.attr('id')).length > 0);
-      } 
-      
-      //otherwise, give the list and select elements a generated ID
-      else {
-        menuCount++;
-        $this.attr('id', 'mm'+menuCount);
-        return ($('#mobileMenu_mm'+menuCount).length > 0);
-      }
-    }
-    
-    
-    //change page on mobile menu selection
-    function goToPage($this){
-      if($this.val() !== null){document.location.href = $this.val()}
-    }
-    
-    
-    //show the mobile menu
-    function showMenu($this){
-      $this.hide('display', 'none');
-      $('#mobileMenu_'+$this.attr('id')).show();
-    }
-    
-    
-    //hide the mobile menu
-    function hideMenu($this){
-      $this.css('display', '');
-      $('#mobileMenu_'+$this.attr('id')).hide();
-    }
-    
-    
-    //create the mobile menu
-    function createMenu($this){
-      if(isList($this)){
-                
-        //generate select element as a string to append via jQuery
-        var selectString = '<select id="mobileMenu_'+$this.attr('id')+'" class="mobileMenu">';
-        
-        //create first option (no value)
-        selectString += '<option value="">'+settings.topOptionText+'</option>';
-        
-        //loop through list items
-        $this.find('li').each(function(){
-          
-          //when sub-item, indent
-          var levelStr = '';
-          var len = $(this).parents('ul, ol').length;
-          for(i=1;i<len;i++){levelStr += settings.indentString;}
-          
-          //get url and text for option
-          var link = $(this).find('a:first-child').attr('href');
-          var text = levelStr + $(this).clone().children('ul, ol').remove().end().text();
-          
-          //add option
-          selectString += '<option value="'+link+'">'+text+'</option>';
-        });
-        
-        selectString += '</select>';
-        
-        //append select element to ul/ol's container
-        $this.parent().append(selectString);
-        
-        //add change event handler for mobile menu
-        $('#mobileMenu_'+$this.attr('id')).change(function(){
-          goToPage($(this));
-        });
-        
-        //hide current menu, show mobile menu
-        showMenu($this);
-      } else {
-        alert('mobileMenu will only work with UL or OL elements!');
-      }
-    }
-    
-    
-    //plugin functionality
-    function run($this){
-      
-      //menu doesn't exist
-      if(isMobile() && !menuExists($this)){
-        createMenu($this);
-      }
-      
-      //menu already exists
-      else if(isMobile() && menuExists($this)){
-        showMenu($this);
-      }
-      
-      //not mobile browser
-      else if(!isMobile() && menuExists($this)){
-        hideMenu($this);
-      }
 
-    }
-    
-    //run plugin on each matched ul/ol
-    //maintain chainability by returning "this"
-    return this.each(function() {
-      
-      //override the default settings if user provides some
-      if(options){$.extend(settings, options);}
-      
-      //cache "this"
-      var $this = $(this);
-    
-      //bind event to browser resize
-      $(window).resize(function(){run($this);});
+	//go to page
+	function goTo(url){
+		document.location.href = url;
+	}
+	
+	//does menu exist?
+	function menuExists(){
+		return ($('.mnav').length) ? true : false;
+	}
 
-      //run plugin
-      run($this);
+	//validate selector's matched list(s)
+	function isList($this){
+		var pass = true;
+		$this.each(function(){
+			if(!$(this).is('ul') && !$(this).is('ol')){
+				pass=false;
+				console.log(pass);
+			}
+		});
+		return pass;
+	}//isList()
 
-    });
-    
-  };
-  
+
+	//function to decide if mobile or not
+	function isMobile(){
+		return ($(window).width() < settings.switchWidth);
+	}
+	
+	
+	//function to get text value of element, but not it's children
+	function getText($item){
+		return $.trim($item.clone().children('ul, ol').remove().end().text());
+	}
+	
+	//function to check if URL is unique
+	function isUrlUnique(url){
+		return ($.inArray(url, uniqueLinks) === -1) ? true : false;
+	}
+	
+	
+	//function to do duplicate checking for combined list
+	function checkForDuplicates($menu){
+		
+		$menu.find(' > li').each(function(){
+		
+			var $li = $(this),
+				link = $li.find('a').attr('href'),
+				parentLink = function(){
+					if($li.parent().parent().is('li')){
+						return $li.parent().parent().find('a').attr('href');
+					} else {
+						return null;
+					}
+				};
+						
+			//check nested <li>s before checking current one
+			if($li.find(' ul, ol').length){
+				checkForDuplicates($li.find('> ul, > ol'));
+			}
+		
+			//remove empty UL's if any are left by LI removals
+			if(!$li.find(' > ul li, > ol li').length){
+				$li.find('ul, ol').remove();
+			}
+		
+			//if parent <li> has a link, and it's not unique, append current <li> to the "unique parent" detected earlier
+			if(!isUrlUnique(parentLink(), uniqueLinks) && isUrlUnique(link, uniqueLinks)){
+				$li.appendTo(
+					$menu.closest('ul#mmnav').find('li:has(a[href='+parentLink()+']):first ul')
+				);
+			}
+			
+			//otherwise, check if the current <li> is unique, if it is, add it to the unique list
+			else if(isUrlUnique(link)){
+				uniqueLinks.push(link);
+			}
+			
+			//if it isn't, remove it. Simples.
+			else{
+				$li.remove();
+			}
+		
+		});
+	}
+	
+	
+	//function to combine lists into one
+	function combineLists(){
+		
+		//create a new list
+		var $menu = $('<ul id="mmnav" />');
+		
+		//loop through each menu and extract the list's child items
+		//then append them to the new list
+		$menus.each(function(){
+			$(this).children().clone().appendTo($menu);
+		});
+		
+		//de-duplicate any repeated items
+		checkForDuplicates($menu);
+		
+		console.log($menu);
+		
+		//return new combined list
+		return $menu;
+		
+	}//combineLists()
+	
+	
+	
+	//function to create options in the select menu
+	function createOption($item, $container, text){
+		
+		//if no text param is passed, use list item's text, otherwise use settings.groupPageText
+		if(!text){
+			$('<option value="'+$item.find('a:first').attr('href')+'">'+$.trim(getText($item))+'</option>').appendTo($container);
+		} else {
+			$('<option value="'+$item.find('a:first').attr('href')+'">'+text+'</option>').appendTo($container);
+		}
+	
+	}//createOption()
+	
+	
+	
+	//function to create option groups
+	function createOptionGroup($group, $container){
+		
+		//create <optgroup> for sub-nav items
+		var $optgroup = $('<optgroup label="'+$.trim(getText($group))+'" />');
+		
+		//append top option to it (current list item's text)
+		createOption($group,$optgroup, settings.groupPageText);
+	
+		//loop through each sub-nav list
+		$group.children('ul, ol').each(function(){
+		
+			//loop through each list item and create an <option> for it
+			$(this).children('li').each(function(){
+				createOption($(this), $optgroup);
+			});
+		});
+		
+		//append to select element
+		$optgroup.appendTo($container);
+		
+	}//createOptionGroup()
+
+	
+	
+	//function to create <select> menu
+	function createSelect($menu){
+	
+		//create <select> to insert into the page
+		var $select = $('<select id="mm'+menuCount+'" class="mnav" />');
+		menuCount++;
+		
+		//create default option if the text is set (set to null for no option)
+		if(settings.topOptionText){
+			createOption($('<li>'+settings.topOptionText+'</li>'), $select);
+		}
+		
+		//loop through first list items
+		$menu.children('li').each(function(){
+		
+			var $li = $(this);
+
+			//if nested select is wanted, and has sub-nav, add optgroup element with child options
+			if($li.children('ul, ol').length && settings.nested){
+				createOptionGroup($li, $select);
+			}
+			
+			//otherwise it's a single level select menu, so build option
+			else {
+				createOption($li, $select);			
+			}
+						
+		});
+		
+		//add change event and prepend menu to set element
+		$select
+			.change(function(){goTo($(this).val());})
+			.prependTo(settings.prependTo);
+	
+	}//createSelect()
+
+	
+	//function to run plugin functionality
+	function runPlugin(){
+	
+		//menu doesn't exist
+		if(isMobile() && !menuExists()){
+			
+			//if user wants to combine menus, create a single <select>
+			if(settings.combine){
+				var $menu = combineLists();
+				createSelect($menu);
+			}
+			
+			//otherwise, create a select for each matched list
+			else{
+				$menus.each(function(){
+					createSelect($(this));
+				});
+			}
+		}
+		
+		//menu exists, and browser is mobile width
+		if(isMobile() && menuExists()){
+			$('.mnav').show();
+			$menus.hide();
+		}
+			
+		//otherwise, hide the mobile menu
+		if(!isMobile() && menuExists()){
+			$('.mnav').hide();
+			$menus.show();
+		}
+		
+	}//runPlugin()
+
+	
+	
+	//plugin definition
+	$.fn.mobileMenu = function(options){
+
+		//override the default settings if user provides some
+		if(options){$.extend(settings, options);}
+		
+		//check if user has run the plugin against list element(s)
+		if(isList($(this))){
+			$menus = $(this);
+			runPlugin();
+			$(window).resize(function(){runPlugin();});
+		} else {
+			alert('mobileMenu only works with <ul>/<ol>');
+		}
+				
+	};//mobileMenu()
+	
 })(jQuery);
