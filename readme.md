@@ -6,7 +6,8 @@ The options available for the plugin are listed below.
 Their default value appears next to their names, and available values below the description.
 
 ### combine [true]
-Convert multiple navigation lists into a single dropdown for mobiles
+Convert multiple navigation lists into a single dropdown for mobiles.
+Any duplicated links (based on URL's being identical) will be de-duplicated automatically.
 [true/false]
 
 ### groupPageText ['Main']
