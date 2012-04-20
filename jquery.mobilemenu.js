@@ -36,7 +36,6 @@
 		$this.each(function(){
 			if(!$(this).is('ul') && !$(this).is('ol')){
 				pass=false;
-				console.log(pass);
 			}
 		});
 		return pass;
@@ -120,9 +119,7 @@
 		
 		//de-duplicate any repeated items
 		checkForDuplicates($menu);
-		
-		console.log($menu);
-		
+				
 		//return new combined list
 		return $menu;
 		
