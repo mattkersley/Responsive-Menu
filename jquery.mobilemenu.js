@@ -87,7 +87,7 @@
 			//if parent <li> has a link, and it's not unique, append current <li> to the "unique parent" detected earlier
 			if(!isUrlUnique(parentLink(), uniqueLinks) && isUrlUnique(link, uniqueLinks)){
 				$li.appendTo(
-					$menu.closest('ul#mmnav').find('li:has(a[href='+parentLink()+']):first ul')
+					$menu.closest('ul#mmnav').find('li:has(a[href="'+parentLink()+'"]):first ul')
 				);
 			}
 			
